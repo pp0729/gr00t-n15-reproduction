@@ -7,6 +7,12 @@ TRAIN_PYTHON="/mnt/4t/guo/miniconda3/envs/gr00t-n15/bin/python"
 BASE_MODEL="/mnt/4t/guo/cache/huggingface/hub/models--nvidia--GR00T-N1.5-3B/snapshots/869830fc749c35f34771aa5209f923ac57e4564e"
 DATASET="${1:?请传入服务器上的 AR5 补偿前目标数据集绝对路径}"
 
+MAX_STEPS="${2:-10}"
+if ! [[ "$MAX_STEPS" =~ ^[1-9][0-9]*$ ]]; then
+    echo "Training steps must be a positive integer." >&2
+    exit 1
+fi
+
 cd "$PROJECT_ROOT"
 
 [[ -x "$TRAIN_PYTHON" ]] || {
@@ -46,8 +52,8 @@ COMMAND=(
     --embodiment-tag new_embodiment
     --num-gpus 1
     --batch-size 2
-    --max-steps 10
-    --save-steps 10
+    --max-steps "$MAX_STEPS"
+    --save-steps "$MAX_STEPS"
     --dataloader-num-workers 2
     --dataloader-prefetch-factor 2
     --gradient-accumulation-steps 1
