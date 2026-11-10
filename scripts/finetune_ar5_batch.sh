@@ -13,6 +13,12 @@ if ! [[ "$MAX_STEPS" =~ ^[1-9][0-9]*$ ]]; then
     exit 1
 fi
 
+NUM_GPUS="${3:-1}"
+if ! [[ "$NUM_GPUS" =~ ^[1-9][0-9]*$ ]]; then
+    echo "GPU count must be a positive integer." >&2
+    exit 1
+fi
+
 cd "$PROJECT_ROOT"
 
 [[ -x "$TRAIN_PYTHON" ]] || {
@@ -79,14 +85,21 @@ EXPERIMENT_ROOT="/mnt/4t/guo/gr00t-experiments/ar5-goal-finetune-batch"
 mkdir -p "$EXPERIMENT_ROOT"
 RUN_DIR="$(mktemp -d "$EXPERIMENT_ROOT/$(date +%Y%m%d-%H%M%S)-XXXXXX")"
 
+LAUNCHER=("$TRAIN_PYTHON" -B -u)
+if (( NUM_GPUS > 1 )); then
+    export IS_TORCHRUN=1
+    LAUNCHER+=(-m torch.distributed.run --standalone --nnodes=1
+        "--nproc_per_node=$NUM_GPUS")
+fi
+
 COMMAND=(
-    "$TRAIN_PYTHON" -B -u scripts/gr00t_finetune.py
+    "${LAUNCHER[@]}" scripts/gr00t_finetune.py
     --dataset-path "${TRAIN_DATASETS[@]}"
     --output-dir "$RUN_DIR/checkpoints"
     --base-model-path "$BASE_MODEL"
     --data-config gr00t.experiment.ar5.data_config:AR5BGoalDataConfig
     --embodiment-tag new_embodiment
-    --num-gpus 1
+    --num-gpus "$NUM_GPUS"
     --batch-size 2
     --max-steps "$MAX_STEPS"
     --save-steps "$MAX_STEPS"
