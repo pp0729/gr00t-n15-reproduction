@@ -51,16 +51,16 @@ from pathlib import Path
 
 root = Path(sys.argv[1]).resolve(strict=True)
 rows = json.loads((root / "manifest.json").read_text())
-if not isinstance(rows, list) or len(rows) != 10:
-    raise SystemExit("Expected 10 manifest entries")
+if not isinstance(rows, list) or not rows:
+    raise SystemExit("Expected a nonempty manifest list")
 if any(r.get("split") not in {"train", "validation"} for r in rows):
     raise SystemExit("Unknown split")
-if len({r["episode"] for r in rows}) != 10:
+if len({r["episode"] for r in rows}) != len(rows):
     raise SystemExit("Repeated episode")
 train = [r for r in rows if r["split"] == "train"]
 validation = [r for r in rows if r["split"] == "validation"]
-if len(train) != 8 or len(validation) != 2:
-    raise SystemExit("Expected 8 train and 2 validation episodes")
+if not train or not validation:
+    raise SystemExit("Expected both train and validation episodes")
 paths = {}
 for r in rows:
     path = (root / r["dataset"]).resolve(strict=True)
@@ -68,15 +68,15 @@ for r in rows:
     if not path.is_dir() or not (path / "meta/info.json").is_file():
         raise SystemExit(f"Invalid dataset: {path}")
     paths[r["episode"]] = path
-if len(set(paths.values())) != 10:
+if len(set(paths.values())) != len(rows):
     raise SystemExit("Repeated dataset path")
 for r in train:
     print(paths[r["episode"]])
 PY_MANIFEST
 )"
 mapfile -t TRAIN_DATASETS <<< "$TRAIN_DATASET_TEXT"
-[[ "${#TRAIN_DATASETS[@]}" -eq 8 ]] || {
-    echo "Expected 8 training dataset paths." >&2
+[[ -n "${TRAIN_DATASET_TEXT}" ]] || {
+    echo "No training dataset paths found." >&2
     exit 1
 }
 
