@@ -4,7 +4,7 @@ set -euo pipefail
 # Intended to run on the server after Git synchronization.
 PROJECT_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 TRAIN_PYTHON="/mnt/4t/guo/miniconda3/envs/gr00t-n15/bin/python"
-BASE_MODEL="/mnt/4t/guo/cache/huggingface/hub/models--nvidia--GR00T-N1.5-3B/snapshots/869830fc749c35f34771aa5209f923ac57e4564e"
+BASE_MODEL="${AR5_BASE_MODEL:-/mnt/4t/guo/cache/huggingface/hub/models--nvidia--GR00T-N1.5-3B/snapshots/869830fc749c35f34771aa5209f923ac57e4564e}"
 DATASET="${1:?请传入服务器上的 AR5 批次根目录，内含 manifest.json}"
 
 MAX_STEPS="${2:-10}"
@@ -102,7 +102,7 @@ COMMAND=(
     --num-gpus "$NUM_GPUS"
     --batch-size 2
     --max-steps "$MAX_STEPS"
-    --save-steps "$MAX_STEPS"
+    --save-steps "${AR5_SAVE_STEPS:-$MAX_STEPS}"
     --dataloader-num-workers 2
     --dataloader-prefetch-factor 2
     --gradient-accumulation-steps 1
@@ -114,6 +114,9 @@ COMMAND=(
     --tune-diffusion-model
     --no-resume
 )
+if [[ -n "${AR5_LEARNING_RATE:-}" ]]; then
+    COMMAND+=(--learning-rate "$AR5_LEARNING_RATE")
+fi
 
 {
     printf 'started_at=%s\n' "$(date -Is)"
